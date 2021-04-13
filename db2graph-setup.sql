@@ -4,7 +4,7 @@ CREATE TABLE linkdb0.linktable
     id2        bigint  NOT NULL DEFAULT '0',
     link_type  bigint  NOT NULL DEFAULT '0',
     visibility smallint     NOT NULL DEFAULT '0',
-    data       varbinary(255) NOT NULL DEFAULT BX'',
+    data       varchar(255) NOT NULL DEFAULT '',
     time       bigint  NOT NULL DEFAULT '0',
     version    bigint       NOT NULL DEFAULT '0',
     PRIMARY KEY (link_type, id1, id2)
@@ -26,6 +26,6 @@ CREATE TABLE linkdb0.nodetable
     type    int       NOT NULL,
     version numeric   NOT NULL,
     time    int       NOT NULL,
-    data    blob      NOT NULL,
+    data    clob(17)  NOT NULL,
     PRIMARY KEY (id)
 );
