@@ -16,14 +16,20 @@
  */
 package com.facebook.LinkBench;
 
+import javax.sql.rowset.serial.SerialClob;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
+import java.sql.Clob;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.Properties;
+import java.util.*;
 
 public class LinkStoreDb2sql extends LinkStoreSql {
+
+    public Base64.Encoder base64Encoder = Base64.getEncoder();
+    private int maxlength = 0;
 
     public LinkStoreDb2sql() {
         super();
@@ -140,6 +146,63 @@ public class LinkStoreDb2sql extends LinkStoreSql {
             conn_ac0.rollback();
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    protected long[] bulkAddNodesImpl(String dbid, List<Node> nodes) throws SQLException {
+        checkNodeTableConfigured();
+        checkDbid(dbid);
+
+        if (Level.TRACE.isGreaterOrEqual(debuglevel))
+            logger.trace("bulkAddNodes for " + nodes.size() + " nodes");
+
+        PreparedStatement pstmt;
+        boolean must_close_pstmt = false;
+
+        if (nodes.size() == 1)
+            pstmt = pstmt_add_node_1;
+        else if (nodes.size() == bulkLoadBatchSize())
+            pstmt = pstmt_add_node_n;
+        else {
+            pstmt = makeAddNodePS(nodes.size());
+            must_close_pstmt = true;
+        }
+
+        int x = 1;
+        for (Node node: nodes) {
+            pstmt.setInt(x, node.type);
+            pstmt.setLong(x+1, node.version);
+            pstmt.setInt(x+2, node.time);
+            pstmt.setClob(x+3, new SerialClob(base64Encoder.encodeToString(node.data).toCharArray()));
+            x += 4;
+            if (base64Encoder.encodeToString(node.data).getBytes().length > maxlength) {
+                maxlength = base64Encoder.encodeToString(node.data).getBytes().length;
+                System.out.println(maxlength);
+            }
+        }
+
+        int res = pstmt.executeUpdate();
+        ResultSet rs = pstmt.getGeneratedKeys();
+
+        long newIds[] = new long[nodes.size()];
+        // Find the generated id
+        int i = 0;
+        while (rs.next() && i < nodes.size()) {
+            newIds[i++] = rs.getLong(1);
+        }
+
+        if (res != nodes.size() || i != nodes.size()) {
+            String s = "bulkAddNodes insert for " + nodes.size() +
+                    " returned " + res + " with " + i + " generated keys ";
+            logger.error(s);
+            throw new RuntimeException(s);
+        }
+
+        assert(!rs.next()); // check done
+        rs.close();
+        if (must_close_pstmt)
+            pstmt.close();
+        return newIds;
     }
 
 }
