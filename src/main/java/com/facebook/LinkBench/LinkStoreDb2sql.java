@@ -19,6 +19,8 @@ package com.facebook.LinkBench;
 import javax.sql.rowset.serial.SerialClob;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.Charset;
+import java.nio.charset.CharsetEncoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.Clob;
 import java.sql.PreparedStatement;
@@ -429,10 +431,10 @@ public class LinkStoreDb2sql extends LinkStoreSql {
     }
 
     private void setBytesAsVarchar(PreparedStatement pstmt, int i, byte[] bytes) throws SQLException {
-        pstmt.setString(i, base64Encoder.encodeToString(bytes));
+        pstmt.setString(i, new String(bytes, StandardCharsets.US_ASCII));
     }
 
     private byte[] getVarcharAsBytes(ResultSet rs, int i) throws SQLException, IOException {
-        return base64Decoder.decode(rs.getString(i));
+        return rs.getString(i).getBytes(StandardCharsets.US_ASCII);
     }
 }
