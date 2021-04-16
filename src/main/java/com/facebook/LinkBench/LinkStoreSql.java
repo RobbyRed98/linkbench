@@ -820,7 +820,7 @@ abstract class LinkStoreSql extends GraphStore {
 
   // lookup using id1, type, id2
   @Override
-  public Link getLink(String dbid, long id1, long link_type, long id2) throws SQLException {
+  public Link getLink(String dbid, long id1, long link_type, long id2) throws SQLException, IOException {
     RetryCounter rc = new RetryCounter(retry_get_link, max_get_link);
     SQLException last_ex = null;
 
@@ -840,7 +840,7 @@ abstract class LinkStoreSql extends GraphStore {
     }
   }
 
-  protected Link getLinkImpl(String dbid, long id1, long link_type, long id2) throws SQLException {
+  protected Link getLinkImpl(String dbid, long id1, long link_type, long id2) throws SQLException, IOException {
     checkDbid(dbid);
 
     if (Level.TRACE.isGreaterOrEqual(debuglevel)) {
@@ -865,7 +865,7 @@ abstract class LinkStoreSql extends GraphStore {
   }
 
   @Override
-  public Link[] multigetLinks(String dbid, long id1, long link_type, long[] id2s) throws SQLException {
+  public Link[] multigetLinks(String dbid, long id1, long link_type, long[] id2s) throws SQLException, IOException {
     RetryCounter rc = new RetryCounter(retry_multigetlinks, max_multigetlinks);
     SQLException last_ex = null;
 
@@ -884,7 +884,7 @@ abstract class LinkStoreSql extends GraphStore {
     }
   }
 
-  protected Link[] multigetLinksImpl(String dbid, long id1, long link_type, long[] id2s) throws SQLException {
+  protected Link[] multigetLinksImpl(String dbid, long id1, long link_type, long[] id2s) throws SQLException, IOException {
     checkDbid(dbid);
 
     if (Level.TRACE.isGreaterOrEqual(debuglevel))
@@ -931,7 +931,7 @@ abstract class LinkStoreSql extends GraphStore {
 
   // lookup using just id1, type
   @Override
-  public Link[] getLinkList(String dbid, long id1, long link_type) throws SQLException {
+  public Link[] getLinkList(String dbid, long id1, long link_type) throws SQLException, IOException {
     // Retry logic in getLinkList
     return getLinkList(dbid, id1, link_type, 0, Long.MAX_VALUE, 0, rangeLimit);
   }
@@ -939,7 +939,7 @@ abstract class LinkStoreSql extends GraphStore {
   @Override
   public Link[] getLinkList(String dbid, long id1, long link_type,
                             long minTimestamp, long maxTimestamp,
-                            int offset, int limit) throws SQLException {
+                            int offset, int limit) throws SQLException, IOException {
     RetryCounter rc = new RetryCounter(retry_get_link_list, max_get_link_list);
     SQLException last_ex = null;
 
@@ -961,7 +961,7 @@ abstract class LinkStoreSql extends GraphStore {
 
   protected Link[] getLinkListImpl(String dbid, long id1, long link_type,
                                    long minTimestamp, long maxTimestamp,
-                                   int offset, int limit) throws SQLException {
+                                   int offset, int limit) throws SQLException, IOException {
     checkDbid(dbid);
 
     if (Level.TRACE.isGreaterOrEqual(debuglevel)) {
@@ -996,7 +996,7 @@ abstract class LinkStoreSql extends GraphStore {
     }
   }
 
-  protected Link createLinkFromRow(ResultSet rs) throws SQLException {
+  protected Link createLinkFromRow(ResultSet rs) throws SQLException, IOException {
     Link l = new Link();
     l.id1 = rs.getLong(1);
     l.id2 = rs.getLong(2);
@@ -1285,7 +1285,7 @@ abstract class LinkStoreSql extends GraphStore {
   }
 
   @Override
-  public Node getNode(String dbid, int type, long id) throws SQLException {
+  public Node getNode(String dbid, int type, long id) throws SQLException, IOException {
     RetryCounter rc = new RetryCounter(retry_get_node, max_get_node);
     SQLException last_ex = null;
 
@@ -1304,7 +1304,7 @@ abstract class LinkStoreSql extends GraphStore {
     }
   }
 
-  protected Node getNodeImpl(String dbid, int type, long id) throws SQLException {
+  protected Node getNodeImpl(String dbid, int type, long id) throws SQLException, IOException {
     checkNodeTableConfigured();
     checkDbid(dbid);
 

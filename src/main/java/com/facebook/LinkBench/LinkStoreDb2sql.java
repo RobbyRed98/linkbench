@@ -29,6 +29,7 @@ import java.util.*;
 public class LinkStoreDb2sql extends LinkStoreSql {
 
     public Base64.Encoder base64Encoder = Base64.getEncoder();
+    public Base64.Decoder base64Decoder = Base64.getDecoder();
     private int maxlength = 0;
 
     public LinkStoreDb2sql() {
@@ -173,12 +174,8 @@ public class LinkStoreDb2sql extends LinkStoreSql {
             pstmt.setInt(x, node.type);
             pstmt.setLong(x+1, node.version);
             pstmt.setInt(x+2, node.time);
-            pstmt.setClob(x+3, new SerialClob(base64Encoder.encodeToString(node.data).toCharArray()));
+            setBytesAsClob(pstmt, x+3, node.data);
             x += 4;
-            if (base64Encoder.encodeToString(node.data).getBytes().length > maxlength) {
-                maxlength = base64Encoder.encodeToString(node.data).getBytes().length;
-                System.out.println(maxlength);
-            }
         }
 
         int res = pstmt.executeUpdate();
@@ -205,4 +202,237 @@ public class LinkStoreDb2sql extends LinkStoreSql {
         return newIds;
     }
 
+    protected boolean updateNodeImpl(String dbid, Node node) throws SQLException {
+        checkNodeTableConfigured();
+        checkDbid(dbid);
+
+        if (Level.TRACE.isGreaterOrEqual(debuglevel))
+            logger.trace("updateNode for id " + node.id);
+
+        pstmt_update_node.setLong(1, node.version);
+        pstmt_update_node.setInt(2, node.time);
+        setBytesAsClob(pstmt_update_node, 3, node.data);
+        pstmt_update_node.setLong(4, node.id);
+        pstmt_update_node.setInt(5, node.type);
+
+        int rows = pstmt_update_node.executeUpdate();
+
+        if (rows == 1)
+            return true;
+        else if (rows == 0)
+            return false;
+        else {
+            String s = "updateNode expected 1 or 0 but returned " + rows +
+                    " for id=" + node.id;
+            logger.error(s);
+            throw new RuntimeException(s);
+        }
+    }
+
+    protected Node getNodeImpl(String dbid, int type, long id) throws SQLException, IOException {
+        checkNodeTableConfigured();
+        checkDbid(dbid);
+
+        if (Level.TRACE.isGreaterOrEqual(debuglevel))
+            logger.trace("getNode for id= " + id + " type=" + type);
+
+        pstmt_get_node.setLong(1, id);
+
+        ResultSet rs = pstmt_get_node.executeQuery();
+
+        if (rs.next()) {
+            Node res = new Node(rs.getLong(1), rs.getInt(2), rs.getLong(3), rs.getInt(4), getClobAsBytes(rs, 5));
+
+            // Check that multiple rows weren't returned
+            assert(rs.next() == false);
+            rs.close();
+
+            if (res.type != type) {
+                logger.warn("getNode found id=" + id + " with wrong type (" + type + " vs " + res.type);
+                return null;
+            } else {
+                return res;
+            }
+
+        } else {
+            rs.close();
+            return null;
+        }
+    }
+
+    private void setBytesAsClob(PreparedStatement pstmt, int i, byte[] bytes) throws SQLException {
+        pstmt.setClob(i, new SerialClob(base64Encoder.encodeToString(bytes).toCharArray()));
+    }
+
+    private byte[] getClobAsBytes(ResultSet rs, int i) throws SQLException, IOException {
+        return base64Decoder.decode(rs.getClob(i).getAsciiStream().readAllBytes());
+    }
+
+    protected void addLinkImpl(String dbid, Link l, boolean noinverse) throws SQLException {
+        checkDbid(dbid);
+
+        if (Level.TRACE.isGreaterOrEqual(debuglevel))
+            logger.trace("addLink enter for " + l.id1 + "." + l.id2 + "." + l.link_type);
+
+        pstmt_add_link_ins_link.setLong(1, l.id1);
+        pstmt_add_link_ins_link.setLong(2, l.id2);
+        pstmt_add_link_ins_link.setLong(3, l.link_type);
+        pstmt_add_link_ins_link.setByte(4, l.visibility);
+        setBytesAsVarchar(pstmt_add_link_ins_link, 5, l.data);
+        pstmt_add_link_ins_link.setInt(6, l.version);
+        pstmt_add_link_ins_link.setLong(7, l.time);
+
+        // If the link is there then the caller switches to updateLinkImpl
+        int ins_result = pstmt_add_link_ins_link.executeUpdate();
+
+        int base_count = 1;
+        if (l.visibility != VISIBILITY_DEFAULT)
+            base_count = 0;
+
+        addLinkChangeCount(dbid, l, base_count, pstmt_add_link_inc_count);
+
+        if (Level.TRACE.isGreaterOrEqual(debuglevel))
+            logger.trace("addLink commit with count change");
+
+        conn_ac0.commit();
+
+        if (check_count)
+            testCount(dbid, linktable, counttable, l.id1, l.link_type);
+    }
+
+    protected LinkWriteResult updateLinkImpl(String dbid, Link l, boolean noinverse) throws SQLException {
+        checkDbid(dbid);
+
+        if (Level.TRACE.isGreaterOrEqual(debuglevel))
+            logger.trace("updateLink " + l.id1 + "." + l.id2 + "." + l.link_type);
+
+        // Read and lock the row in Link
+        int visibility = getVisibilityForUpdate(l.id1, l.link_type, l.id2, "updateLink");
+
+        if (visibility == VISIBILITY_NOT_FOUND) {
+            // Row doesn't exist
+            logger.trace("updateLink row not found");
+            conn_ac0.rollback();
+            return LinkWriteResult.LINK_NOT_DONE;
+        }
+
+        // Update the row in Link
+        pstmt_update_link_upd_link.setByte(1, l.visibility);
+        setBytesAsVarchar(pstmt_update_link_upd_link, 2, l.data);
+        pstmt_update_link_upd_link.setInt(3, l.version);
+        pstmt_update_link_upd_link.setLong(4, l.time);
+        pstmt_update_link_upd_link.setLong(5, l.id1);
+        pstmt_update_link_upd_link.setLong(6, l.id2);
+        pstmt_update_link_upd_link.setLong(7, l.link_type);
+
+        int res = pstmt_update_link_upd_link.executeUpdate();
+        if (res == 0) {
+            logger.trace("updateLink row not changed");
+            conn_ac0.rollback();
+            return LinkWriteResult.LINK_NO_CHANGE;
+        } else if (res != 1) {
+            String s = "updateLink update failed with res=" + res +
+                    " for id1=" + l.id1 + " id2=" + l.id2 + " link_type=" + l.link_type;
+            logger.error(s);
+            conn_ac0.rollback();
+            throw new RuntimeException(s);
+        }
+
+        // If needed, increment or decrement Count
+        if (visibility != l.visibility) {
+            int update_count;
+
+            if (l.visibility == VISIBILITY_DEFAULT)
+                update_count = 1;
+            else
+                update_count = -1;
+
+            pstmt_link_inc_count.setInt(1, update_count);
+            pstmt_link_inc_count.setLong(2, (new Date()).getTime());
+            pstmt_link_inc_count.setLong(3, l.id1);
+            pstmt_link_inc_count.setLong(4, l.link_type);
+
+            int update_res = pstmt_link_inc_count.executeUpdate();
+            if (update_res != 1) {
+                String s = "updateLink increment count failed with res=" + res +
+                        " for id1=" + l.id1 + " link_type=" + l.link_type;
+                logger.error(s);
+                conn_ac0.rollback();
+                throw new RuntimeException(s);
+            }
+        }
+
+        conn_ac0.commit();
+
+        if (check_count)
+            testCount(dbid, linktable, counttable, l.id1, l.link_type);
+
+        return LinkWriteResult.LINK_UPDATE;
+    }
+
+    protected Link createLinkFromRow(ResultSet rs) throws SQLException, IOException {
+        Link l = new Link();
+        l.id1 = rs.getLong(1);
+        l.id2 = rs.getLong(2);
+        l.link_type = rs.getLong(3);
+        l.visibility = rs.getByte(4);
+        l.data = getVarcharAsBytes(rs, 5);
+        l.version = rs.getInt(6);
+        l.time = rs.getLong(7);
+        return l;
+    }
+
+    protected void addBulkLinksImpl(String dbid, List<Link> links, boolean noinverse) throws SQLException {
+        checkDbid(dbid);
+
+        if (Level.TRACE.isGreaterOrEqual(debuglevel))
+            logger.trace("addBulkLinks: " + links.size() + " links");
+
+        if (!noinverse) {
+            String s = "addBulkLinks does not handle inverses";
+            logger.error(s);
+            throw new RuntimeException(s);
+        }
+
+        PreparedStatement pstmt;
+        boolean must_close_pstmt = false;
+
+        if (links.size() == bulkLoadBatchSize())
+            pstmt = pstmt_add_bulk_links_n;
+        else {
+            pstmt = makeAddLinksPS(links.size(), true);
+            must_close_pstmt = true;
+        }
+
+        int x = 1;
+        for (Link link: links) {
+            pstmt.setLong(x, link.id1);
+            pstmt.setLong(x+1, link.id2);
+            pstmt.setLong(x+2, link.link_type);
+            pstmt.setByte(x+3, link.visibility);
+            setBytesAsVarchar(pstmt, x+4, link.data);
+            pstmt.setInt(x+5, link.version);
+            pstmt.setLong(x+6, link.time);
+            x += 7;
+        }
+
+        int nrows = pstmt.executeUpdate();
+        if (nrows != links.size()) {
+            String s = "addBulkLinks insert of " + links.size() + " links" +
+                    " returned " + nrows;
+            logger.error(s);
+            throw new RuntimeException(s);
+        }
+
+        if (must_close_pstmt)
+            pstmt.close();
+    }
+
+    private void setBytesAsVarchar(PreparedStatement pstmt, int i, byte[] bytes) throws SQLException {
+        pstmt.setString(i, base64Encoder.encodeToString(bytes));
+    }
+
+    private byte[] getVarcharAsBytes(ResultSet rs, int i) throws SQLException, IOException {
+        return base64Decoder.decode(rs.getString(i));
+    }
 }
