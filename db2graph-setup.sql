@@ -1,7 +1,7 @@
 CREATE TABLE linkdb0.linktable
 (
-    id1        bigint  NOT NULL DEFAULT '0',
-    id2        bigint  NOT NULL DEFAULT '0',
+    id1        bigint  NOT NULL DEFAULT '0', -- REFERENCES linkdb0.nodetable(id),
+    id2        bigint  NOT NULL DEFAULT '0', -- REFERENCES linkdb0.nodetable(id),
     link_type  bigint  NOT NULL DEFAULT '0',
     visibility smallint     NOT NULL DEFAULT '0',
     data       varchar(255) NOT NULL DEFAULT '',
@@ -12,7 +12,7 @@ CREATE TABLE linkdb0.linktable
 
 CREATE TABLE linkdb0.counttable
 (
-    id        bigint NOT NULL DEFAULT '0',
+    id        bigint NOT NULL DEFAULT '0', -- REFERENCES linkdb0.nodetable(id),
     link_type bigint NOT NULL DEFAULT '0',
     count     int         NOT NULL DEFAULT '0',
     time      bigint NOT NULL DEFAULT '0',
