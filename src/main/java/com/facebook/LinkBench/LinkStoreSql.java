@@ -35,6 +35,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Properties;
+import java.util.concurrent.ExecutionException;
 
 abstract class LinkStoreSql extends GraphStore {
 
@@ -822,7 +823,7 @@ abstract class LinkStoreSql extends GraphStore {
 
   // lookup using id1, type, id2
   @Override
-  public Link getLink(String dbid, long id1, long link_type, long id2) throws SQLException, IOException, ResponseException {
+  public Link getLink(String dbid, long id1, long link_type, long id2) throws SQLException, IOException, ResponseException, ExecutionException, InterruptedException {
     RetryCounter rc = new RetryCounter(retry_get_link, max_get_link);
     SQLException last_ex = null;
 
@@ -867,7 +868,7 @@ abstract class LinkStoreSql extends GraphStore {
   }
 
   @Override
-  public Link[] multigetLinks(String dbid, long id1, long link_type, long[] id2s) throws SQLException, IOException, ResponseException {
+  public Link[] multigetLinks(String dbid, long id1, long link_type, long[] id2s) throws SQLException, IOException, ResponseException, ExecutionException, InterruptedException {
     RetryCounter rc = new RetryCounter(retry_multigetlinks, max_multigetlinks);
     SQLException last_ex = null;
 
@@ -933,7 +934,7 @@ abstract class LinkStoreSql extends GraphStore {
 
   // lookup using just id1, type
   @Override
-  public Link[] getLinkList(String dbid, long id1, long link_type) throws SQLException, IOException, ResponseException {
+  public Link[] getLinkList(String dbid, long id1, long link_type) throws SQLException, IOException, ResponseException, ExecutionException, InterruptedException {
     // Retry logic in getLinkList
     return getLinkList(dbid, id1, link_type, 0, Long.MAX_VALUE, 0, rangeLimit);
   }
@@ -941,7 +942,7 @@ abstract class LinkStoreSql extends GraphStore {
   @Override
   public Link[] getLinkList(String dbid, long id1, long link_type,
                             long minTimestamp, long maxTimestamp,
-                            int offset, int limit) throws SQLException, IOException, ResponseException {
+                            int offset, int limit) throws SQLException, IOException, ResponseException, ExecutionException, InterruptedException {
     RetryCounter rc = new RetryCounter(retry_get_link_list, max_get_link_list);
     SQLException last_ex = null;
 
@@ -1012,7 +1013,7 @@ abstract class LinkStoreSql extends GraphStore {
 
   // count the #links
   @Override
-  public long countLinks(String dbid, long id1, long link_type) throws SQLException, ResponseException {
+  public long countLinks(String dbid, long id1, long link_type) throws SQLException, ResponseException, ExecutionException, InterruptedException {
     RetryCounter rc = new RetryCounter(retry_count_links, max_count_links);
     SQLException last_ex = null;
 
@@ -1287,7 +1288,7 @@ abstract class LinkStoreSql extends GraphStore {
   }
 
   @Override
-  public Node getNode(String dbid, int type, long id) throws SQLException, IOException, ResponseException {
+  public Node getNode(String dbid, int type, long id) throws SQLException, IOException, ResponseException, ExecutionException, InterruptedException {
     RetryCounter rc = new RetryCounter(retry_get_node, max_get_node);
     SQLException last_ex = null;
 

@@ -112,7 +112,7 @@ public abstract class LinkStore {
    * @throws Exception
    */
   public abstract Link getLink(String dbid, long id1, long link_type, long id2)
-    throws Exception;
+          throws Exception;
 
   /**
    * Lookup multiple links: same as getlink but retrieve
@@ -121,7 +121,7 @@ public abstract class LinkStore {
    */
   public Link[] multigetLinks(String dbid, long id1, long link_type,
                                                       long id2s[])
-    throws Exception {
+          throws Exception {
     // Default implementation
     ArrayList<Link> res = new ArrayList<Link>(id2s.length);
     for (int i = 0; i < id2s.length; i++) {
@@ -164,7 +164,7 @@ public abstract class LinkStore {
   public abstract Link[] getLinkList(String dbid, long id1, long link_type,
                             long minTimestamp, long maxTimestamp,
                             int offset, int limit)
-    throws Exception;
+          throws Exception;
 
   // count the #links
   public abstract long countLinks(String dbid, long id1, long link_type) throws Exception;

@@ -1,5 +1,6 @@
 package com.facebook.LinkBench;
 
+import org.apache.tinkerpop.gremlin.driver.Client;
 import org.apache.tinkerpop.gremlin.driver.Tokens;
 import org.apache.tinkerpop.gremlin.driver.exception.ResponseException;
 import org.apache.tinkerpop.gremlin.driver.message.RequestMessage;
@@ -9,13 +10,20 @@ import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
-public class LinkStoreDb2GraphCypher extends LinkStoreDb2Graph {
+public class LinkStoreDb2GraphOldCypher extends LinkStoreDb2GraphOld {
 
-    @Override
+
+    private Client graphClient;
+
+    public void initialize(Properties props, Phase currentPhase, int threadId) {
+        super.initialize(props, currentPhase, threadId);
+        graphClient = graphCluster.connect();
+    }
+
     protected Node getNodeGImpl(String dbid, int type, long id) throws ResponseException, ExecutionException, InterruptedException {
         if (Level.TRACE.isGreaterOrEqual(debuglevel))
             logger.trace("getNode for id= " + id + " type=" + type + " (graph)");
@@ -48,7 +56,6 @@ public class LinkStoreDb2GraphCypher extends LinkStoreDb2Graph {
         return node;
     }
 
-    @Override
     protected Link getLinkGImpl(String dbid, long id1, long link_type, long id2) throws ResponseException, ExecutionException, InterruptedException {
         if (Level.TRACE.isGreaterOrEqual(debuglevel))
             logger.trace("getLink for id1=" + id1 + ", link_type=" + link_type + ", id2=" + id2 + " (graph)");
@@ -80,7 +87,6 @@ public class LinkStoreDb2GraphCypher extends LinkStoreDb2Graph {
         return valueMapToLink(resultValues.get(0));
     }
 
-    @Override
     protected long countLinksGImpl(String dbid, long id1, long link_type) throws ResponseException, ExecutionException, InterruptedException {
         if (Level.TRACE.isGreaterOrEqual(debuglevel))
             logger.trace("countLinks for id1=" + id1 + " and link_type=" + link_type + " (graph)");
@@ -112,7 +118,6 @@ public class LinkStoreDb2GraphCypher extends LinkStoreDb2Graph {
         return countList.get(0);
     }
 
-    @Override
     protected Link[] multigetLinksGImpl(String dbid, long id1, long link_type, long[] id2s) throws ResponseException, ExecutionException, InterruptedException {
         if (Level.TRACE.isGreaterOrEqual(debuglevel))
             logger.trace("multigetLinks for id1=" + id1 + " and link_type=" + link_type + " and id2s " +
@@ -152,7 +157,6 @@ public class LinkStoreDb2GraphCypher extends LinkStoreDb2Graph {
         }
     }
 
-    @Override
     protected Link[] getLinkListGImpl(String dbid, long id1, long link_type, long minTimestamp, long maxTimestamp, int offset, int limit) throws ResponseException, ExecutionException, InterruptedException {
         if (Level.TRACE.isGreaterOrEqual(debuglevel)) {
             logger.trace("getLinkList for id1=" + id1 + ", link_type=" + link_type +
@@ -190,5 +194,31 @@ public class LinkStoreDb2GraphCypher extends LinkStoreDb2Graph {
             logger.trace("getLinkList found no row");
             return null;
         }
+    }
+
+
+    @Override
+    public Node getNode(String dbid, int type, long id) throws ResponseException, SQLException, IOException, ExecutionException, InterruptedException {
+        return getNodeGImpl(dbid, type, id);
+    }
+
+    @Override
+    public long countLinks(String dbid, long id1, long link_type) throws ResponseException, SQLException, ExecutionException, InterruptedException {
+        return countLinksGImpl(dbid, id1, link_type);
+    }
+
+    @Override
+    public Link getLink(String dbid, long id1, long link_type, long id2) throws ResponseException, SQLException, IOException, ExecutionException, InterruptedException {
+        return getLinkGImpl(dbid, id1, link_type, id2);
+    }
+
+    @Override
+    public Link[] multigetLinks(String dbid, long id1, long link_type, long[] id2s) throws ResponseException, SQLException, IOException, ExecutionException, InterruptedException {
+        return multigetLinksGImpl(dbid, id1, link_type, id2s);
+    }
+
+    @Override
+    public Link[] getLinkList(String dbid, long id1, long link_type, long minTimestamp, long maxTimestamp, int offset, int limit) throws ResponseException, SQLException, IOException, ExecutionException, InterruptedException {
+        return getLinkListGImpl(dbid, id1, link_type, minTimestamp, maxTimestamp, offset, limit);
     }
 }

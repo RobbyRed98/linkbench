@@ -264,7 +264,7 @@ public class LinkStoreDb2GraphOld extends LinkStoreDb2sql{
         return link;
     }
 
-    private Node valueMapToNode(Map<Object, Object> valueMap) {
+    protected Node valueMapToNode(Map<Object, Object> valueMap) {
         long id = (long) valueMap.get("ID");
         int type = (int) valueMap.get("TYPE");
         long version = ((BigDecimal) valueMap.get("VERSION")).longValue();
@@ -273,7 +273,7 @@ public class LinkStoreDb2GraphOld extends LinkStoreDb2sql{
         return new Node(id, type, version, time, data);
     }
 
-    private Link valueMapToLink(Map<Object, Object> valueMap) {
+    protected Link valueMapToLink(Map<Object, Object> valueMap) {
         Link link = new Link();
         link.id1 = (long) valueMap.get("ID1");
         link.id2 = (long) valueMap.get("ID2");

@@ -15,6 +15,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
 
 import static org.apache.tinkerpop.gremlin.process.traversal.AnonymousTraversalSource.traversal;
 import static org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__.unfold;
@@ -153,7 +154,7 @@ public class LinkStoreDb2Graph extends LinkStoreDb2sql{
         }
     }
 
-    protected Node getNodeGImpl(String dbid, int type, long id) throws ResponseException {
+    protected Node getNodeGImpl(String dbid, int type, long id) throws ResponseException, ExecutionException, InterruptedException {
         if (Level.TRACE.isGreaterOrEqual(debuglevel))
             logger.trace("getNode for id= " + id + " type=" + type + " (graph)");
 
@@ -178,7 +179,7 @@ public class LinkStoreDb2Graph extends LinkStoreDb2sql{
         return node;
     }
 
-    protected Link getLinkGImpl(String dbid, long id1, long link_type, long id2) throws ResponseException {
+    protected Link getLinkGImpl(String dbid, long id1, long link_type, long id2) throws ResponseException, ExecutionException, InterruptedException {
         if (Level.TRACE.isGreaterOrEqual(debuglevel)) {
             logger.trace("getLink for id1=" + id1 + ", link_type=" + link_type +
                     ", id2=" + id2 + " (graph)");
@@ -203,7 +204,7 @@ public class LinkStoreDb2Graph extends LinkStoreDb2sql{
         return valueMapToLink(resultValues.get(0));
     }
 
-    protected long countLinksGImpl(String dbid, long id1, long link_type) throws ResponseException {
+    protected long countLinksGImpl(String dbid, long id1, long link_type) throws ResponseException, ExecutionException, InterruptedException {
         if (Level.TRACE.isGreaterOrEqual(debuglevel))
             logger.trace("countLinks for id1=" + id1 + " and link_type=" + link_type + " (graph)");
 
@@ -225,7 +226,7 @@ public class LinkStoreDb2Graph extends LinkStoreDb2sql{
         return countList.get(0);
     }
 
-    protected Link[] multigetLinksGImpl(String dbid, long id1, long link_type, long[] id2s) throws ResponseException {
+    protected Link[] multigetLinksGImpl(String dbid, long id1, long link_type, long[] id2s) throws ResponseException, ExecutionException, InterruptedException {
         if (Level.TRACE.isGreaterOrEqual(debuglevel))
             logger.trace("multigetLinks for id1=" + id1 + " and link_type=" + link_type + " and id2s " +
                     Arrays.toString(id2s) + " (graph)");
@@ -257,7 +258,7 @@ public class LinkStoreDb2Graph extends LinkStoreDb2sql{
         }
     }
 
-    protected Link[] getLinkListGImpl(String dbid, long id1, long link_type, long minTimestamp, long maxTimestamp, int offset, int limit) throws ResponseException {
+    protected Link[] getLinkListGImpl(String dbid, long id1, long link_type, long minTimestamp, long maxTimestamp, int offset, int limit) throws ResponseException, ExecutionException, InterruptedException {
         if (Level.TRACE.isGreaterOrEqual(debuglevel)) {
             logger.trace("getLinkList for id1=" + id1 + ", link_type=" + link_type +
                     " minTS=" + minTimestamp + ", maxTS=" + maxTimestamp +
@@ -290,7 +291,7 @@ public class LinkStoreDb2Graph extends LinkStoreDb2sql{
     }
 
     @Override
-    public Node getNode(String dbid, int type, long id) throws ResponseException, SQLException, IOException {
+    public Node getNode(String dbid, int type, long id) throws ResponseException, SQLException, IOException, ExecutionException, InterruptedException {
         try {
             return getNodeGImpl(dbid, type, id);
         } catch (ResponseException ex) {
@@ -300,7 +301,7 @@ public class LinkStoreDb2Graph extends LinkStoreDb2sql{
     }
 
     @Override
-    public long countLinks(String dbid, long id1, long link_type) throws ResponseException, SQLException {
+    public long countLinks(String dbid, long id1, long link_type) throws ResponseException, SQLException, ExecutionException, InterruptedException {
         try {
             return countLinksGImpl(dbid, id1, link_type);
         } catch (ResponseException ex) {
@@ -310,7 +311,7 @@ public class LinkStoreDb2Graph extends LinkStoreDb2sql{
     }
 
     @Override
-    public Link getLink(String dbid, long id1, long link_type, long id2) throws ResponseException, SQLException, IOException {
+    public Link getLink(String dbid, long id1, long link_type, long id2) throws ResponseException, SQLException, IOException, ExecutionException, InterruptedException {
         try {
             return getLinkGImpl(dbid, id1, link_type, id2);
         } catch (ResponseException ex) {
@@ -320,7 +321,7 @@ public class LinkStoreDb2Graph extends LinkStoreDb2sql{
     }
 
     @Override
-    public Link[] multigetLinks(String dbid, long id1, long link_type, long[] id2s) throws ResponseException, SQLException, IOException {
+    public Link[] multigetLinks(String dbid, long id1, long link_type, long[] id2s) throws ResponseException, SQLException, IOException, ExecutionException, InterruptedException {
         try {
             return multigetLinksGImpl(dbid, id1, link_type, id2s);
         } catch (ResponseException ex) {
@@ -330,7 +331,7 @@ public class LinkStoreDb2Graph extends LinkStoreDb2sql{
     }
 
     @Override
-    public Link[] getLinkList(String dbid, long id1, long link_type, long minTimestamp, long maxTimestamp, int offset, int limit) throws ResponseException, SQLException, IOException {
+    public Link[] getLinkList(String dbid, long id1, long link_type, long minTimestamp, long maxTimestamp, int offset, int limit) throws ResponseException, SQLException, IOException, ExecutionException, InterruptedException {
         try {
             return getLinkListGImpl(dbid, id1, link_type, minTimestamp, maxTimestamp, offset, limit);
         } catch (ResponseException ex) {
@@ -339,7 +340,7 @@ public class LinkStoreDb2Graph extends LinkStoreDb2sql{
         }
     }
 
-    private void processResponseException(ResponseException ex, String op) {
+    protected void processResponseException(ResponseException ex, String op) {
         logger.warn("ResponseException from " + op + ": " + ex);
         String msg = "ResponseException thrown by SQL driver during: " + op + ".  ";
         msg += "Message was: '" + ex.getMessage() + "'.  ";
@@ -354,7 +355,7 @@ public class LinkStoreDb2Graph extends LinkStoreDb2sql{
         }
     }
 
-    private Node valueMapToNode(Map<Object, Object> valueMap) {
+    protected Node valueMapToNode(Map<Object, Object> valueMap) {
         long id = (long) valueMap.get("ID");
         int type = (int) valueMap.get("TYPE");
         long version = ((BigDecimal) valueMap.get("VERSION")).longValue();
@@ -363,7 +364,7 @@ public class LinkStoreDb2Graph extends LinkStoreDb2sql{
         return new Node(id, type, version, time, data);
     }
 
-    private Link valueMapToLink(Map<Object, Object> valueMap) {
+    protected Link valueMapToLink(Map<Object, Object> valueMap) {
         Link link = new Link();
         link.id1 = (long) valueMap.get("ID1");
         link.id2 = (long) valueMap.get("ID2");
