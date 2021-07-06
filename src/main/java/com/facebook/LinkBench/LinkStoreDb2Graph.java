@@ -15,7 +15,6 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.CompletionException;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.tinkerpop.gremlin.process.traversal.AnonymousTraversalSource.traversal;
 import static org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__.unfold;
@@ -355,27 +354,6 @@ public class LinkStoreDb2Graph extends LinkStoreDb2sql{
         }
     }
 
-    private Node resultToNode(List<Object> results) {
-        byte[] data = base64Decoder.decode((String) results.get(0));
-        long version = ((BigDecimal) results.get(1)).longValue();
-        int time = (int) results.get(2);
-        long id = (long) results.get(3);
-        int type = (int) results.get(4);
-        return new Node(id, type, version, time, data);
-    }
-
-    private Link resultToLink(List<Object> results) {
-        Link link = new Link();
-        link.visibility = (byte) ((int) results.get(0));
-        link.link_type = (long) results.get(1);
-        link.data = ((String) results.get(2)).getBytes(StandardCharsets.US_ASCII);
-        link.id2 = (long) results.get(3);
-        link.id1 = (long) results.get(4);
-        link.version = (int) ((long) results.get(5));
-        link.time = (long) results.get(6);
-        return link;
-    }
-
     private Node valueMapToNode(Map<Object, Object> valueMap) {
         long id = (long) valueMap.get("ID");
         int type = (int) valueMap.get("TYPE");
@@ -395,17 +373,6 @@ public class LinkStoreDb2Graph extends LinkStoreDb2sql{
         link.time = (long) valueMap.get("TIME");
         link.version = (int) ((long) valueMap.get("VERSION"));
         return link;
-    }
-
-    private Map<Object, Object> createNodeId(String dbid, String label, Long id) {
-        return Map.of("prefix", String.format("%s.%s", dbid.toUpperCase(), label.toUpperCase()), "idCols", Collections.singletonList(id));
-    }
-
-    private Map<Object, Object> createLinkId(String dbid, String label, Long link_type,  Long id1, Long id2){
-        return Map.of(
-                "prefix", String.format("%s.%s", dbid.toUpperCase(), label.toUpperCase()),
-                "idCols", Arrays.asList(link_type, id1, id2)
-        );
     }
 
     @Override
