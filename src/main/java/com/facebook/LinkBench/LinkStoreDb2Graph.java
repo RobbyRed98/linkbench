@@ -160,7 +160,6 @@ public class LinkStoreDb2Graph extends LinkStoreDb2sql{
         Map<Object, Object> nodeId = createNodeId(dbid, nodelabel, id);
 
         List<Map<Object, Object>> nodeValueMaps = graphTraversalSource.V(nodeId)
-                .hasLabel(nodelabel)
                 .valueMap("ID", "TYPE", "VERSION", "TIME", "DATA")
                 .by(unfold())
                 .toList();
@@ -188,7 +187,6 @@ public class LinkStoreDb2Graph extends LinkStoreDb2sql{
         Map<Object, Object> linkId = createLinkId(dbid, linklabel, link_type, id1, id2);
 
         List<Map<Object, Object>> linkValueMaps = graphTraversalSource.E(linkId)
-                .hasLabel(linklabel)
                 .valueMap("ID1", "ID2", "LINK_TYPE", "VISIBILITY", "DATA", "TIME", "VERSION")
                 .by(unfold())
                 .toList();
