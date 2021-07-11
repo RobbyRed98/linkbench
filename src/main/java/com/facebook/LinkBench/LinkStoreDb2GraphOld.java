@@ -162,6 +162,7 @@ public class LinkStoreDb2GraphOld extends LinkStoreDb2sql{
 
         var countList = graphTraversalSource.V(nodeId1)
                 .outE(linklabel)
+                .has("LINK_TYPE", link_type)
                 .count()
                 .toList();
 
@@ -197,7 +198,7 @@ public class LinkStoreDb2GraphOld extends LinkStoreDb2sql{
 
         if (links.length > 0) {
             if (Level.TRACE.isGreaterOrEqual(debuglevel))
-                logger.trace("multigetLinks found " + links.length + " rows ");
+                logger.trace("multigetLinks found " + links.length + " rows");
             return links;
         } else {
             logger.trace("multigetLinks row not found");
@@ -217,6 +218,7 @@ public class LinkStoreDb2GraphOld extends LinkStoreDb2sql{
 
         List<Map<Object, Object>> linkValueMaps = graphTraversalSource.V(nodeId1)
                 .outE(linklabel)
+                .has("LINK_TYPE", link_type)
                 .limit(limit)
                 .valueMap("ID1", "ID2", "LINK_TYPE", "VISIBILITY", "DATA", "TIME", "VERSION")
                 .by(unfold())
