@@ -157,21 +157,22 @@ public class LinkStoreDb2Graph extends LinkStoreDb2sql{
         if (Level.TRACE.isGreaterOrEqual(debuglevel))
             logger.trace("getNode for id= " + id + " type=" + type + " (graph)");
 
-        List<Map<Object, Object>> resultValues = graphTraversalSource.V()
+        Map<Object, Object> nodeId = createNodeId(dbid, nodelabel, id);
+
+        List<Map<Object, Object>> nodeValueMaps = graphTraversalSource.V(nodeId)
                 .hasLabel(nodelabel)
-                .has("ID", id)
                 .valueMap("ID", "TYPE", "VERSION", "TIME", "DATA")
                 .by(unfold())
                 .toList();
 
-        if (resultValues.size() != 1) {
+        if (nodeValueMaps.size() != 1) {
             return null;
         }
 
-        Node node = valueMapToNode(resultValues.get(0));
+        Node node = valueMapToNode(nodeValueMaps.get(0));
 
         if (node.type != type) {
-            logger.warn("getNode found id=" + id + " with wrong type (" + type + " vs " + type + ")");
+            logger.warn("getNode found id=" + id + " with wrong type (" + type + " vs " + type);
             return null;
         }
 
@@ -184,34 +185,33 @@ public class LinkStoreDb2Graph extends LinkStoreDb2sql{
                     ", id2=" + id2 + " (graph)");
         }
 
-        List<Map<Object,Object>> resultValues = graphTraversalSource.V()
-                .outE(linklabel)
-                .has("ID1", id1)
-                .has("ID2", id2)
-                .has("LINK_TYPE", link_type)
+        Map<Object, Object> linkId = createLinkId(dbid, linklabel, link_type, id1, id2);
+
+        List<Map<Object, Object>> linkValueMaps = graphTraversalSource.E(linkId)
+                .hasLabel(linklabel)
                 .valueMap("ID1", "ID2", "LINK_TYPE", "VISIBILITY", "DATA", "TIME", "VERSION")
+                .by(unfold())
                 .toList();
 
-        if (resultValues.size() == 0) {
+        if (linkValueMaps.size() == 0) {
             logger.trace("getLink found no row");
             return null;
-        } else if (resultValues.size() > 1) {
+        } else if (linkValueMaps.size() > 1) {
             logger.warn("getNode id1=" + id1 + " id2=" + id2 + " link_type=" + link_type +
-                    " returns the wrong amount of information: expected=1, actual=" + resultValues.size());
+                    " returns the wrong amount of information: expected=1, actual=" + linkValueMaps.size());
             return null;
         }
-        return valueMapToLink(resultValues.get(0));
+        return valueMapToLink(linkValueMaps.get(0));
     }
 
     protected long countLinksGImpl(String dbid, long id1, long link_type) throws ResponseException {
         if (Level.TRACE.isGreaterOrEqual(debuglevel))
             logger.trace("countLinks for id1=" + id1 + " and link_type=" + link_type + " (graph)");
 
-        var countList = graphTraversalSource.V()
-                .hasLabel(nodelabel)
-                .has("ID", id1)
+        var nodeId1 = createNodeId(dbid, nodelabel, id1);
+
+        var countList = graphTraversalSource.V(nodeId1)
                 .outE(linklabel)
-                .has("LINK_TYPE", link_type)
                 .count()
                 .toList();
 
@@ -231,13 +231,9 @@ public class LinkStoreDb2Graph extends LinkStoreDb2sql{
             logger.trace("multigetLinks for id1=" + id1 + " and link_type=" + link_type + " and id2s " +
                     Arrays.toString(id2s) + " (graph)");
 
-        Long[] id2sBoxed = Arrays.stream(id2s).boxed().toArray(Long[]::new);
+        var linkId = createLinkId(dbid, linklabel, link_type, id1, id2s[0]);
 
-        List<Map<Object, Object>> linkValueMaps = graphTraversalSource.E()
-                .hasLabel(linklabel)
-                .has("LINK_TYPE", link_type)
-                .has("ID1", id1)
-                .has("ID2", P.within(id2sBoxed))
+        List<Map<Object, Object>> linkValueMaps = graphTraversalSource.E(linkId)
                 .valueMap("ID1", "ID2", "LINK_TYPE", "VISIBILITY", "DATA", "TIME", "VERSION")
                 .by(unfold())
                 .toList();
@@ -265,11 +261,10 @@ public class LinkStoreDb2Graph extends LinkStoreDb2sql{
                     " offset=" + offset + ", limit=" + limit + " (graph)");
         }
 
-        List<Map<Object, Object>> linkValueMaps = graphTraversalSource.V()
-                .hasLabel(nodelabel)
-                .has("ID", id1)
+        var nodeId1 = createNodeId(dbid, nodelabel, id1);
+
+        List<Map<Object, Object>> linkValueMaps = graphTraversalSource.V(nodeId1)
                 .outE(linklabel)
-                .has("LINK_TYPE", link_type)
                 .limit(limit)
                 .valueMap("ID1", "ID2", "LINK_TYPE", "VISIBILITY", "DATA", "TIME", "VERSION")
                 .by(unfold())
@@ -356,15 +351,6 @@ public class LinkStoreDb2Graph extends LinkStoreDb2sql{
         }
     }
 
-    private Node valueMapToNode(Map<Object, Object> valueMap) {
-        long id = (long) valueMap.get("ID");
-        int type = (int) valueMap.get("TYPE");
-        long version = ((BigDecimal) valueMap.get("VERSION")).longValue();
-        int time = (int) valueMap.get("TIME");
-        byte[] data = base64Decoder.decode((String) valueMap.get("DATA"));
-        return new Node(id, type, version, time, data);
-    }
-
     private Link valueMapToLink(Map<Object, Object> valueMap) {
         Link link = new Link();
         link.id1 = (long) valueMap.get("ID1");
@@ -375,6 +361,26 @@ public class LinkStoreDb2Graph extends LinkStoreDb2sql{
         link.time = (long) valueMap.get("TIME");
         link.version = (int) ((long) valueMap.get("VERSION"));
         return link;
+    }
+
+    private Node valueMapToNode(Map<Object, Object> valueMap) {
+        long id = (long) valueMap.get("ID");
+        int type = (int) valueMap.get("TYPE");
+        long version = ((BigDecimal) valueMap.get("VERSION")).longValue();
+        int time = (int) valueMap.get("TIME");
+        byte[] data = base64Decoder.decode((String) valueMap.get("DATA"));
+        return new Node(id, type, version, time, data);
+    }
+
+    private Map<Object, Object> createNodeId(String dbid, String label, Long id) {
+        return Map.of("prefix", String.format("%s.%s", dbid.toUpperCase(), label.toUpperCase()), "idCols", Collections.singletonList(id));
+    }
+
+    private Map<Object, Object> createLinkId(String dbid, String label, Long link_type,  Long id1, Long id2){
+        return Map.of(
+                "prefix", String.format("%s.%s", dbid.toUpperCase(), label.toUpperCase()),
+                "idCols", Arrays.asList(link_type, id1, id2)
+        );
     }
 
     @Override
